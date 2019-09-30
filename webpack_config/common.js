@@ -1,9 +1,11 @@
 'use strict';
 
 const path = require('path');
+const autoprefixer = require('autoprefixer');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CleanWebpackPlugin = require('clean-webpack-plugin');
 const ManifestPlugin = require('webpack-manifest-plugin');
+const HardSourceWebpackPlugin = require('hard-source-webpack-plugin');
 
 module.exports = {
     entry: {
@@ -36,6 +38,7 @@ module.exports = {
                 ],
             },
             {
+                // eslint-disable-next-line max-len
                 test: /\.(ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|cur)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
                 loader: 'url-loader',
                 options: {
@@ -46,6 +49,59 @@ module.exports = {
             {
                 test: /\.tsx?$/,
                 loader: 'awesome-typescript-loader',
+                options: {
+                    useCache: true,
+                    cacheDirectory: path.join(__dirname, '..', 'node_modules', '.cache', 'awcache'),
+                    reportFiles: ['src/**/*.{ts,tsx}'],
+                    transpileOnly: true,
+                    useTranspileModule: true,
+                },
+            },
+            {
+                test: /\.(css|less)$/,
+                use: [
+                    {
+                        loader: MiniCssExtractPlugin.loader,
+                        options: {
+                            // you can specify a publ icPath here
+                            // by default it use publicPath in webpackOptions.output
+                            publicPath: '../',
+                        },
+                    },
+                    {
+                        loader: 'css-loader',
+                        options: {
+                            url: false,
+                            sourceMap: false,
+                        },
+                    },
+                    {
+                        loader: require.resolve('postcss-loader'),
+                        options: {
+                            ident: 'postcss',
+                            plugins: () => [
+                                require('postcss-flexbugs-fixes'),
+                                require('cssnano')({ preset: 'default' }),
+                                autoprefixer({
+                                    overrideBrowserslist: [
+                                        '>1%',
+                                        'last 4 versions',
+                                        'Firefox ESR',
+                                        'not ie < 9', // React doesn't support IE8 anyway
+                                    ],
+                                    flexbox: 'no-2009',
+                                    remove: false,
+                                }),
+                            ],
+                        },
+                    },
+                    {
+                        loader: 'less-loader',
+                        options: {
+                            sourceMap: false,
+                        },
+                    },
+                ],
             },
         ],
     },
@@ -53,11 +109,23 @@ module.exports = {
         react: 'React',
         'react-dom': 'ReactDOM',
         '@entrylabs/tool': 'EntryTool',
+        'entry-paint': 'EntryPaint',
     },
     plugins: [
         new CleanWebpackPlugin(['dist'], {
             root: path.join(__dirname, '..'),
         }),
+        new HardSourceWebpackPlugin(),
+        new HardSourceWebpackPlugin.ExcludeModulePlugin([
+            {
+                // HardSource works with mini-css-extract-plugin but due to how
+                // mini-css emits assets, assets are not emitted on repeated builds with
+                // mini-css and hard-source together. Ignoring the mini-css loader
+                // modules, but not the other css loader modules, excludes the modules
+                // that mini-css needs rebuilt to output assets every time.
+                test: /mini-css-extract-plugin[\\/]dist[\\/]loader/,
+            },
+        ]),
         new ManifestPlugin(),
         new MiniCssExtractPlugin({
             // Options similar to the same options in webpackOptions.output
@@ -66,16 +134,4 @@ module.exports = {
             chunkFilename: '[id].css',
         }),
     ],
-    // optimization: {
-    //     runtimeChunk: 'single',
-    //     // splitChunks: {
-    //     //     chunks: 'all',
-    //     //     // cacheGroups: {
-    //     //     //     vendor: {
-    //     //     //         name: 'vendors',
-    //     //     //         chunks: 'all',
-    //     //     //     },
-    //     //     // },
-    //     // },
-    // },
 };

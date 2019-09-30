@@ -1,6 +1,37 @@
 {
     "plugins": ["prettier"],
+    "parser": "babel-eslint",
     "extends": ["plugin:prettier/recommended"],
+    "overrides": [
+        {
+            "files": ["*.ts"],
+            "parser": "@typescript-eslint/parser",
+            "rules": {
+                "no-unused-vars": "off"
+            }
+        },
+        {
+            "files": ["*.d.ts"],
+            "parser": "@typescript-eslint/parser",
+            "rules": {
+                "no-unused-vars": "off",
+                "no-var": "off",
+                "no-useless-constructor": "off"
+            }
+        }
+    ],
+    "env": {
+        "es6": true,
+        "browser": true,
+        "jquery": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 2017,
+        "sourceType": "module",
+        "ecmaFeatures": {
+            "jsx": true
+        }
+    },
     "rules": {
         "prefer-const": "warn",
         "no-var": "warn",
@@ -64,6 +95,7 @@
         "keyword-spacing": "warn"
     },
     "globals": {
+        "$": true,
         "_": true,
         "arcon": true,
         "goog": true,
@@ -92,6 +124,7 @@
         "entrylms": true,
         "require": true,
         "module": true,
+        "Symbol": true,
         "process": true
     }
 }

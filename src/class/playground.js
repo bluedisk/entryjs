@@ -4,10 +4,11 @@
  */
 'use strict';
 
-import { Sortable, ColorPicker, Dropdown, Backpack } from '@entrylabs/tool';
+import { Backpack, ColorPicker, Dropdown, Sortable } from '@entrylabs/tool';
 import Toast from '../playground/toast';
 import EntryEvent from '@entrylabs/event';
 import { Destroyer } from '../util/destroyer/Destroyer';
+import { saveAs } from 'file-saver';
 
 const Entry = require('../entry');
 
@@ -16,12 +17,11 @@ const Entry = require('../entry');
  * This manage all view related with block.
  * @constructor
  */
-Entry.Playground = class {
+Entry.Playground = class Playground {
     constructor() {
         this._destroyer = this._destroyer || new Destroyer();
         this._destroyer.destroy();
         this.isTextBGMode_ = false;
-        this.enableArduino = false;
 
         /**
          * playground's current view type
@@ -31,9 +31,6 @@ Entry.Playground = class {
         this.viewMode_ = 'default';
         Entry.addEventListener('textEdited', () => {
             this.injectText();
-        });
-        Entry.addEventListener('hwChanged', () => {
-            this.updateHW();
         });
         Entry.addEventListener('commentVisibleChanged', this.toggleCommentButtonVisible.bind(this));
 
@@ -71,8 +68,7 @@ Entry.Playground = class {
             const curtainView = Entry.createElement('div', 'entryCurtain')
                 .addClass('entryPlaygroundCurtainWorkspace entryRemove')
                 .appendTo(this.view_);
-            const [mentHead, mentTail = ''] = Lang.Workspace.cannot_edit_click_to_stop.split('.');
-            curtainView.innerHTML = `${mentHead}.<br/>${mentTail}`;
+            curtainView.innerHTML = Lang.Workspace.cannot_edit_click_to_stop;
             curtainView.addEventListener('click', () => {
                 Entry.engine.toggleStop();
             });
@@ -229,8 +225,8 @@ Entry.Playground = class {
             const backPackButton = Entry.createElement('div')
                 .addClass('entryPlaygroundBackPackButtonWorkspace')
                 .appendTo(tabButtonView);
-            backPackButton.setAttribute('alt', Lang.Blocks.show_all_comment);
-            backPackButton.setAttribute('title', Lang.Blocks.show_all_comment);
+            backPackButton.setAttribute('alt', Lang.Workspace.my_storage);
+            backPackButton.setAttribute('title', Lang.Workspace.my_storage);
 
             this.backPackButton_ = backPackButton;
             backPackButton.bindOnClick(() => {
@@ -388,7 +384,7 @@ Entry.Playground = class {
                     (e) => {
                         const isDragging = this.backPack.getData('isDragging');
                         if (isDragging) {
-                            const point = this.getPosition(e);
+                            const point = Entry.Utils.getPosition(e);
                             const { data } = globalEvent;
                             const { dom: objectDom } = this.objectBackPackEvent;
                             const { dom: blockDom } = this.blockBackPackEvent;
@@ -397,25 +393,33 @@ Entry.Playground = class {
                                 width: -134,
                                 right: -134,
                             });
-                            if (!data.isObjectMouseEnter && this.isPointInRect(point, objectRect)) {
+                            if (
+                                !data.isObjectMouseEnter &&
+                                Entry.Utils.isPointInRect(point, objectRect)
+                            ) {
                                 data.isObjectMouseEnter = true;
                                 this.objectBackPackEvent.trigger('enteritem');
                             } else if (
                                 data.isObjectMouseEnter &&
-                                !this.isPointInRect(point, objectRect)
+                                !Entry.Utils.isPointInRect(point, objectRect)
                             ) {
                                 data.isObjectMouseEnter = false;
                                 this.objectBackPackAreaEvent.trigger('leaveitem');
                             }
-                            if (!data.isBlockMouseEnter && this.isPointInRect(point, blockRect)) {
-                                data.isBlockMouseEnter = true;
-                                this.blockBackPackEvent.trigger('enteritem');
-                            } else if (
-                                data.isBlockMouseEnter &&
-                                !this.isPointInRect(point, blockRect)
-                            ) {
-                                data.isBlockMouseEnter = false;
-                                this.blockBackPackAreaEvent.trigger('leaveitem');
+                            if (Entry.getMainWS().mode === Entry.Workspace.MODE_BOARD) {
+                                if (
+                                    !data.isBlockMouseEnter &&
+                                    Entry.Utils.isPointInRect(point, blockRect)
+                                ) {
+                                    data.isBlockMouseEnter = true;
+                                    this.blockBackPackEvent.trigger('enteritem');
+                                } else if (
+                                    data.isBlockMouseEnter &&
+                                    !Entry.Utils.isPointInRect(point, blockRect)
+                                ) {
+                                    data.isBlockMouseEnter = false;
+                                    this.blockBackPackAreaEvent.trigger('leaveitem');
+                                }
                             }
                         } else {
                             this.objectBackPackAreaEvent.trigger('leaveitem');
@@ -451,26 +455,6 @@ Entry.Playground = class {
         this.backPack.data = {
             canPointEvent,
         };
-    }
-
-    getPosition(event) {
-        const position = {
-            x: 0,
-            y: 0,
-        };
-        if (event.touches && event.touches[0]) {
-            const touch = event.touches[0];
-            position.x = touch.pageX;
-            position.y = touch.pageY;
-        } else {
-            position.x = event.pageX;
-            position.y = event.pageY;
-        }
-        return position;
-    }
-
-    isPointInRect({ x, y }, { top, bottom, left, right }) {
-        return _.inRange(x, left, right) && _.inRange(y, top, bottom);
     }
 
     getBoundingClientRectMemo = _.memoize((target, offset = {}) => {
@@ -571,14 +555,15 @@ Entry.Playground = class {
         this.board = this.mainWorkspace.board;
         this.toast = new Toast(this.board);
         this.blockMenu.banClass('checker');
-        this.banExpansionBlock();
+        // this.banExpansionBlock();
+        Entry.expansion.banAllExpansionBlock();
         this.vimBoard = this.mainWorkspace.vimBoard;
 
         this._destroyer.add(this.mainWorkspace);
         this._destroyer.add(this.toast);
 
         if (Entry.hw) {
-            this.updateHW();
+            Entry.hw.refreshHardwareBlockMenu();
         }
     }
 
@@ -613,11 +598,18 @@ Entry.Playground = class {
                 .addClass('entryPlaygroundPictureList')
                 .appendTo(PictureView);
 
-            this.painter = new Entry.Painter(
-                Entry.createElement('div', 'entryPainter')
-                    .addClass('entryPlaygroundPainter')
-                    .appendTo(PictureView)
-            );
+            const painterDom = Entry.createElement('div', 'entryPainter')
+                .addClass('entryPlaygroundPainter')
+                .appendTo(PictureView);
+
+            switch (Entry.paintMode) {
+                case 'entry-paint':
+                    this.painter = new Entry.Painter(painterDom);
+                    break;
+                case 'literallycanvas':
+                    this.painter = new Entry.LiterallycanvasPainter(painterDom);
+                    break;
+            }
         }
     }
 
@@ -651,9 +643,9 @@ Entry.Playground = class {
         if (!this.object || !this.object.pictures) {
             return [];
         }
-
+        const id = this.object.id;
         return this.object.pictures.map((value) => ({
-            key: value.id,
+            key: `${id}-${value.id}`,
             item: value.view,
         }));
     }
@@ -682,7 +674,7 @@ Entry.Playground = class {
         fontLink.bindOnClick(() => {
             const options = EntryStatic.fonts
                 .filter((font) => font.visible)
-                .map((font) => [font.name, font]);
+                .map((font) => [font.name, font, font.style]);
             fontLink.addClass('imico_pop_select_arr_up');
             fontLink.removeClass('imico_pop_select_arr_down');
             this.openDropDown(
@@ -694,10 +686,14 @@ Entry.Playground = class {
                     if (that.object.entity.getLineBreak()) {
                         textValue = textEditArea.value;
                     }
-
-                    if (/[\u4E00-\u9FFF]/.exec(textValue) != null) {
-                        font = options[0][1];
-                        entrylms.alert(Lang.Menus.not_supported_text);
+                    const { options = {} } = Entry;
+                    const { textOptions = {} } = options;
+                    const { hanjaEnable } = textOptions;
+                    if (!hanjaEnable) {
+                        if (/[\u4E00-\u9FFF]/.exec(textValue) != null) {
+                            font = options[0][1];
+                            entrylms.alert(Lang.Menus.not_supported_text);
+                        }
                     }
                     fontLink.innerText = font.name;
                     $('#entryTextBoxAttrFontName').data('font', font);
@@ -898,7 +894,13 @@ Entry.Playground = class {
             const entity = object.entity;
             const selected = $('#entryTextBoxAttrFontName').data('font');
             const defaultFont = EntryStatic.fonts[0];
-            if (selected.family === 'Nanum Pen Script' || selected.family === 'Jeju Hallasan') {
+            const { options = {} } = Entry;
+            const { textOptions = {} } = options;
+            const { hanjaEnable } = textOptions;
+            if (
+                !hanjaEnable &&
+                (selected.family === 'Nanum Pen Script' || selected.family === 'Jeju Hallasan')
+            ) {
                 if (/[\u4E00-\u9FFF]/.exec(this.value) != null) {
                     $('#entryTextBoxAttrFontName').text(defaultFont.name);
                     entity.setFontType(defaultFont.family);
@@ -1052,9 +1054,9 @@ Entry.Playground = class {
         if (!this.object || !this.object.sounds) {
             return [];
         }
-
+        const id = this.object.id;
         return this.object.sounds.map((value) => ({
-            key: value.id,
+            key: `${id}-${value.id}`,
             item: value.view,
         }));
     }
@@ -1237,18 +1239,25 @@ Entry.Playground = class {
      */
     downloadPicture(pictureId) {
         const picture = Entry.playground.object.getPicture(pictureId);
-        if (picture.fileurl) {
-            window.open(
-                `/api/sprite/download/entryjs/${btoa(picture.fileurl)}/${encodeURIComponent(
-                    picture.name
-                )}.png`
-            );
-        } else {
-            window.open(
-                `/api/sprite/download/image/${btoa(picture.filename)}/${encodeURIComponent(
-                    picture.name
-                )}.png`
-            );
+        const { imageType = 'png' } = picture;
+        /**
+            Logic in try phrase will be disregarded after renewal.
+            nt11576
+        */
+        try {
+            if (picture.fileurl) {
+                saveAs(
+                    `/api/sprite/download/entryjs/${btoa(picture.fileurl)}/${encodeURIComponent(
+                        picture.name
+                    )}.png`,
+                    `${picture.name}.${imageType}`
+                );
+            } else {
+                const src = this.painter.getImageSrc(picture);
+                saveAs(src, `${picture.name}.${imageType}`);
+            }
+        } catch (e) {
+            Entry.dispatchEvent('downloadPicture', picture);
         }
     }
 
@@ -1395,20 +1404,9 @@ Entry.Playground = class {
         }
     }
 
-    addExpansionBlock(block, isNew) {
-        const tempBlock = _.clone(block);
-        delete tempBlock.view;
-        if (isNew === true) {
-            delete tempBlock.id;
-        }
-
-        block = Entry.Utils.copy(tempBlock);
-
-        if (!block.id) {
-            block.id = Entry.generateHash();
-        }
-
-        Entry.do('objectAddExpansionBlock', block);
+    addExpansionBlock(item) {
+        const { name } = item;
+        Entry.expansion.addExpansionBlock(name);
     }
     /**
      * Add sound
@@ -1445,6 +1443,8 @@ Entry.Playground = class {
             } else {
                 window.open(sound.fileurl);
             }
+        } else if (sound.path.indexOf('sound') > -1) {
+            Entry.dispatchEvent('downloadSound', sound);
         } else {
             window.open(
                 `/api/sprite/download/sound/${encodeURIComponent(
@@ -1775,11 +1775,9 @@ Entry.Playground = class {
 
         function nameViewBlur() {
             if (this.value.trim() === '') {
-                Entry.deAttachEventListener(this, 'blur', nameViewBlur);
-                entrylms.alert(Lang.Workspace.enter_the_name);
-                this.focus();
-                Entry.attachEventListener(this, 'blur', nameViewBlur);
-                return;
+                return entrylms.alert(Lang.Workspace.enter_the_name).on('hide', () => {
+                    nameView.focus();
+                });
             }
 
             let nameViewArray = $('.entryPlaygroundPictureName');
@@ -1789,11 +1787,9 @@ Entry.Playground = class {
 
             for (let i = 0; i < nameViewArray.length; i++) {
                 if (nameViewArray.eq(i).val() == nameView.value && nameViewArray[i] != this) {
-                    Entry.deAttachEventListener(this, 'blur', nameViewBlur);
-                    entrylms.alert(Lang.Workspace.name_already_exists);
-                    this.focus();
-                    Entry.attachEventListener(this, 'blur', nameViewBlur);
-                    return;
+                    return entrylms.alert(Lang.Workspace.name_already_exists).on('hide', () => {
+                        nameView.focus();
+                    });
                 }
             }
             const newValue = this.value;
@@ -1820,17 +1816,18 @@ Entry.Playground = class {
         element.appendChild(nameView);
         Entry.createElement('div', `s_${picture.id}`)
             .addClass('entryPlaygroundPictureSize')
-            .appendTo(element).innerHTML = `${picture.dimension.width} X ${
-            picture.dimension.height
-        }`;
+            .appendTo(
+                element
+            ).innerHTML = `${picture.dimension.width} X ${picture.dimension.height}`;
 
         const removeButton = Entry.createElement('div').addClass('entryPlayground_del');
         const { Buttons = {} } = Lang || {};
         const { delete: delText = '삭제' } = Buttons;
         removeButton.appendTo(element).innerText = delText;
-        removeButton.bindOnClick(() => {
+        removeButton.bindOnClick((e) => {
             try {
                 if (Entry.playground.object.removePicture(picture.id)) {
+                    e.stopPropagation();
                     Entry.removeElement(element);
                     Entry.dispatchEvent('removePicture', picture);
                     Entry.toast.success(
@@ -1936,7 +1933,7 @@ Entry.Playground = class {
                 isPlaying = true;
                 thumbnailView.removeClass('entryPlaygroundSoundPlay');
                 thumbnailView.addClass('entryPlaygroundSoundStop');
-                soundInstance = createjs.Sound.play(sound.id);
+                soundInstance = Entry.Utils.playSound(sound.id);
             }
 
             soundInstance.addEventListener('complete', () => {
@@ -1951,15 +1948,14 @@ Entry.Playground = class {
             .appendTo(element);
         nameView.sound = sound;
         nameView.value = sound.name;
+
         Entry.attachEventListener(nameView, 'blur', nameViewBlur);
 
         function nameViewBlur() {
             if (this.value.trim() === '') {
-                Entry.deAttachEventListener(this, 'blur', nameViewBlur);
-                entrylms.alert(Lang.Workspace.enter_the_name);
-                this.focus();
-                Entry.attachEventListener(this, 'blur', nameViewBlur);
-                return;
+                return entrylms.alert(Lang.Workspace.enter_the_name).on('hide', () => {
+                    nameView.focus();
+                });
             }
 
             let nameViewArray = $('.entryPlaygroundSoundName');
@@ -1969,11 +1965,9 @@ Entry.Playground = class {
 
             for (let i = 0; i < nameViewArray.length; i++) {
                 if (nameViewArray.eq(i).val() == nameView.value && nameViewArray[i] != this) {
-                    Entry.deAttachEventListener(this, 'blur', nameViewBlur);
-                    entrylms.alert(Lang.Workspace.name_already_exists);
-                    this.focus();
-                    Entry.attachEventListener(this, 'blur', nameViewBlur);
-                    return;
+                    return entrylms.alert(Lang.Workspace.name_already_exists).on('hide', () => {
+                        nameView.focus();
+                    });
                 }
             }
             const newValue = this.value;
@@ -2024,7 +2018,7 @@ Entry.Playground = class {
             data: {
                 items: options,
                 positionDom: target,
-                outsideExcludeDom:[target],
+                outsideExcludeDom: [target],
                 onOutsideClick: () => {
                     if (dropdownWidget) {
                         closeCallback();
@@ -2046,17 +2040,22 @@ Entry.Playground = class {
     };
 
     openColourPicker = (target, color, canTransparent, callback) => {
+        const containers = $('.entry-color-picker');
+        if (containers.length > 0) {
+            $(target).removeClass('on');
+            return containers.remove();
+        }
         const container = Entry.Dom('div', {
             class: 'entry-color-picker',
             parent: $('body'),
         })[0];
-
         $(target).addClass('on');
         const colorPicker = new ColorPicker({
             data: {
                 color,
                 positionDom: target,
                 canTransparent,
+                outsideExcludeDom: [target],
                 onOutsideClick: (color) => {
                     if (colorPicker) {
                         $(target).removeClass('on');
@@ -2144,39 +2143,6 @@ Entry.Playground = class {
             blockMenu.banClass(block.name, true);
             blockMenu.banClass(`${block.name}_legacy`, true);
         });
-    }
-
-    updateHW() {
-        const blockMenu = _.result(this.mainWorkspace, 'blockMenu');
-        if (!blockMenu) {
-            return;
-        }
-
-        const hw = Entry.hw;
-        if (hw && hw.connected) {
-            blockMenu.banClass('arduinoDisconnected', true);
-
-            hw.banHW();
-
-            if (hw.hwModule) {
-                blockMenu.banClass('arduinoConnect', true);
-                blockMenu.unbanClass('arduinoConnected', true);
-                blockMenu.unbanClass(hw.hwModule.name);
-            } else {
-                blockMenu.banClass('arduinoConnected', true);
-                blockMenu.unbanClass('arduinoConnect', true);
-            }
-        } else {
-            blockMenu.banClass('arduinoConnected', true);
-            blockMenu.banClass('arduinoConnect', true);
-            blockMenu.unbanClass('arduinoDisconnected', true);
-
-            Entry.hw.banHW();
-        }
-
-        blockMenu.hwCodeOutdated = true;
-        blockMenu._generateHwCode(true);
-        blockMenu.reDraw();
     }
 
     toggleLineBreak(isLineBreak) {
@@ -2274,10 +2240,10 @@ Entry.Playground = class {
     destroy() {
         this.commentToggleButton_ && this.commentToggleButton_.unBindOnClick();
         this.backPackButton_ && this.backPackButton_.unBindOnClick();
-        this.blockBackPackEvent.off();
-        this.blockBackPackAreaEvent.off();
-        this.objectBackPackEvent.off();
-        this.objectBackPackAreaEvent.off();
+        this.blockBackPackEvent && this.blockBackPackEvent.off();
+        this.blockBackPackAreaEvent && this.blockBackPackAreaEvent.off();
+        this.objectBackPackEvent && this.objectBackPackEvent.off();
+        this.objectBackPackAreaEvent && this.objectBackPackAreaEvent.off();
         this.globalEvent && this.globalEvent.destroy();
         this._destroyer.destroy();
     }
