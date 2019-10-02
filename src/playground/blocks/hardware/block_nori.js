@@ -101,24 +101,30 @@ Entry.NoriCoding.setLanguage = function() {
     return {
         ko: {
             template: {
-                nori_set_buzzer: '%1번 포트 부저 %2초 울리기',
-                nori_set_servo: '%1번 포트 서보 모터 각도를 %2도로 하기',
+                nori_set_buzzer: '%1번 포트 부저 %2 %3',
+                nori_set_servo: '%1번 포트 서보 모터 각도를 %2도로 하기 %3',
                 nori_get_volume: '%1번 포트 볼륨',
-                nori_get_sound: '%1번 포트 음량 센서 값',
+                nori_get_sound: '%1번 포트 소리 감지 됨',
                 nori_get_button: '%1번 포트 버튼 눌림',
                 nori_get_ambient: '%1번 포트 밝기 센서 값',
                 nori_get_irrange: '%1번 포트 적외선 거리 센서 값',
+                nori_display_number: '%1번 포트 숫자 표시 모듈에 %2 표시 %3',
+                nori_display_time: '%1번 포트 숫자 표시 모듈에 %2시 %3분 표시 %4',
+                nori_display_clear: '%1번 포트 숫자 표시 모듈 지우기 %2',
             },
         },
         en: {
             template: {
-                nori_set_buzzer: 'Play buzzer on port %1 %2 second(s)',
+                nori_set_buzzer: 'Set buzzer on port %1 %2 %3',
                 nori_set_servo: 'Set servo angle on port %1 to %2 dgree',
                 nori_get_volume: 'Volume level on port %1',
-                nori_get_sound: 'Sound level on port %1',
+                nori_get_sound: 'Sound is detected on port %1',
                 nori_get_button: 'button status on port %1',
                 nori_get_ambient: 'Ambient value on port %1',
                 nori_get_irrange: 'IR range sensor value on port %1',
+                nori_display_number: 'Display number on port %1 as %2 %3',
+                nori_display_time: 'Display time on port %1 as %2 %3 %4',
+                nori_display_clear: 'Clear display on port %1 %2',
             },
         },
     };
@@ -127,6 +133,9 @@ Entry.NoriCoding.setLanguage = function() {
 Entry.NoriCoding.blockMenuBlocks = [
     'nori_set_buzzer',
     'nori_set_servo',
+    'nori_display_number',
+    'nori_display_time',
+    'nori_display_clear',
     'nori_get_volume',
     'nori_get_sound',
     'nori_get_button',
@@ -207,9 +216,15 @@ Entry.NoriCoding.getBlocks = function() {
                     defaultType: 'number',
                 },
                 {
-                    type: 'Block',
-                    accept: 'string',
-                    defaultType: 'number',
+                    type: 'Dropdown',
+                    options: [
+                        ['끄기', '0'],
+                        ['켜기', '1'],
+                    ],
+                    value: '0',
+                    fontSize: 11,
+                    bgColor: EntryStatic.colorSet.block.darken.HARDWARE,
+                    arrowColor: EntryStatic.colorSet.arrow.default.HARDWARE,
                 },
                 {
                     type: 'Indicator',
@@ -223,11 +238,6 @@ Entry.NoriCoding.getBlocks = function() {
                     {
                         type: 'nori_get_port_number',
                     },
-                    {
-                        type: 'number',
-                        params: ['1'],
-                    },
-                    null,
                 ],
                 type: 'nori_set_buzzer',
             },
@@ -240,9 +250,7 @@ Entry.NoriCoding.getBlocks = function() {
             func: function(sprite, script) {
                 var sq = Entry.hw.sendQueue;
                 var port = script.getNumberValue('PORT', script);
-                var value = script.getNumberValue('VALUE', script) * 1000;
-                value = Math.min(5000, value);
-                value = Math.max(0, value);
+                var value = script.getField('VALUE', script);
 
                 if (!sq['SET']) {
                     sq['SET'] = {};
@@ -334,7 +342,7 @@ Entry.NoriCoding.getBlocks = function() {
             color: EntryStatic.colorSet.block.default.HARDWARE,
             outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
             fontColor: '#fff',
-            skeleton: 'basic_string_field',
+            skeleton: 'basic_boolean_field',
             statements: [],
             params: [
                 {
@@ -374,7 +382,7 @@ Entry.NoriCoding.getBlocks = function() {
                 js: [],
                 py: [
                     {
-                        syntax: 'Nori.getSoundLevel(%1)',
+                        syntax: 'Nori.isSoundDetected(%1)',
                         blockType: 'param',
                         textParams: [
                             {
@@ -430,7 +438,7 @@ Entry.NoriCoding.getBlocks = function() {
                 js: [],
                 py: [
                     {
-                        syntax: 'Nori.getButtonStatus(%1)',
+                        syntax: 'Nori.isButtonDown(%1)',
                         blockType: 'param',
                         textParams: [
                             {
@@ -625,6 +633,247 @@ Entry.NoriCoding.getBlocks = function() {
                                 type: 'Block',
                                 accept: 'string',
                             },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_display_number: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    {
+                        type: 'number',
+                        params: ['0'],
+                    },
+                    null,
+                ],
+                type: 'nori_display_number',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+                VALUE: 1,
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func: function(sprite, script) {
+                var sq = Entry.hw.sendQueue;
+                var port = script.getNumberValue('PORT', script);
+                var value = script.getNumberValue('VALUE', script);
+                value = value % 10000;
+
+                if (!sq['SET']) {
+                    sq['SET'] = {};
+                }
+                sq['SET'][port] = {
+                    type: Entry.NoriCoding.sensorTypes.SEGMENT,
+                    data: {
+                        value: value,
+                        colon: 0,
+                    },
+                    time: new Date().getTime(),
+                };
+
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.displayNumber(%1, %2)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_display_time: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    {
+                        type: 'number',
+                        params: ['12'],
+                    },
+                    {
+                        type: 'number',
+                        params: ['0'],
+                    },
+                    null,
+                ],
+                type: 'nori_display_time',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+                HOUR: 1,
+                MINUTE: 2,
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func: function(sprite, script) {
+                var sq = Entry.hw.sendQueue;
+                var port = script.getNumberValue('PORT', script);
+                var hour = script.getNumberValue('HOUR', script);
+                var minute = script.getNumberValue('MINUTE', script);
+                hour = Math.min(Math.max(0, hour), 99);
+                minute = Math.min(Math.max(0, minute), 99);
+
+                var value = hour * 100 + minute;
+
+                if (!sq['SET']) {
+                    sq['SET'] = {};
+                }
+                sq['SET'][port] = {
+                    type: Entry.NoriCoding.sensorTypes.SEGMENT,
+                    data: {
+                        value: value,
+                        colon: 1,
+                    },
+                    time: new Date().getTime(),
+                };
+
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.displayTime(%1, %2, %3)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_display_clear: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                ],
+                type: 'nori_display_clear',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func: function(sprite, script) {
+                var sq = Entry.hw.sendQueue;
+                var port = script.getNumberValue('PORT', script);
+
+                if (!sq['SET']) {
+                    sq['SET'] = {};
+                }
+                sq['SET'][port] = {
+                    type: Entry.NoriCoding.sensorTypes.SEGMENT,
+                    data: null,
+                    time: new Date().getTime(),
+                };
+
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.displayClear(%1)',
+                        textParams: [
                             {
                                 type: 'Block',
                                 accept: 'string',
