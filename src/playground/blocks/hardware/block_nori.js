@@ -9,15 +9,15 @@ Entry.NoriCoding = {
         ko: '노리코딩',
         en: 'Nori Coding',
     },
-    setZero: function() {
+    setZero() {
         if (!Entry.hw.sendQueue.SET) {
             Entry.hw.sendQueue = {
                 GET: {},
                 SET: {},
             };
         } else {
-            var keySet = Object.keys(Entry.hw.sendQueue.SET);
-            keySet.forEach(function(key) {
+            const keySet = Object.keys(Entry.hw.sendQueue.SET);
+            keySet.forEach((key) => {
                 Entry.hw.sendQueue.SET[key].data = 0;
                 Entry.hw.sendQueue.SET[key].time = new Date().getTime();
             });
@@ -108,9 +108,11 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_get_button: '%1번 포트 버튼 눌림',
                 nori_get_ambient: '%1번 포트 밝기 센서 값',
                 nori_get_irrange: '%1번 포트 적외선 거리 센서 값',
+                nori_get_ultrasonic: '%1번 포트 초음파 거리 센서 값',
                 nori_display_number: '%1번 포트 숫자 표시 모듈에 %2 표시 %3',
                 nori_display_time: '%1번 포트 숫자 표시 모듈에 %2시 %3분 표시 %4',
                 nori_display_clear: '%1번 포트 숫자 표시 모듈 지우기 %2',
+                nori_lcd_print: '%1번 포트 LCD 모듈에 %2 출력하기 %3',
             },
         },
         en: {
@@ -122,9 +124,11 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_get_button: 'button status on port %1',
                 nori_get_ambient: 'Ambient value on port %1',
                 nori_get_irrange: 'IR range sensor value on port %1',
+                nori_get_ultrasonic: 'Ultrasonic range sensor value on port %1',
                 nori_display_number: 'Display number on port %1 as %2 %3',
                 nori_display_time: 'Display time on port %1 as %2 %3 %4',
                 nori_display_clear: 'Clear display on port %1 %2',
+                nori_lcd_print: 'Print to LCD module on port %1 as %2 %3',
             },
         },
     };
@@ -141,6 +145,8 @@ Entry.NoriCoding.blockMenuBlocks = [
     'nori_get_button',
     'nori_get_ambient',
     'nori_get_irrange',
+    'nori_get_ultrasonic',
+    'nori_lcd_print',
 ];
 
 //region arduinoExt 아두이노 확장모드
@@ -155,12 +161,7 @@ Entry.NoriCoding.getBlocks = function() {
             params: [
                 {
                     type: 'Dropdown',
-                    options: [
-                        ['1', '0'],
-                        ['2', '1'],
-                        ['3', '2'],
-                        ['4', '3'],
-                    ],
+                    options: [['1', '0'], ['2', '1'], ['3', '2'], ['4', '3']],
                     value: '0',
                     fontSize: 11,
                     bgColor: EntryStatic.colorSet.block.darken.HARDWARE,
@@ -174,7 +175,7 @@ Entry.NoriCoding.getBlocks = function() {
             paramsKeyMap: {
                 PORT: 0,
             },
-            func: function(sprite, script) {
+            func(sprite, script) {
                 return script.getStringField('PORT');
             },
             syntax: {
@@ -185,12 +186,7 @@ Entry.NoriCoding.getBlocks = function() {
                         textParams: [
                             {
                                 type: 'Dropdown',
-                                options: [
-                                    ['1', '0'],
-                                    ['2', '1'],
-                                    ['3', '2'],
-                                    ['4', '3'],
-                                ],
+                                options: [['1', '0'], ['2', '1'], ['3', '2'], ['4', '3']],
                                 value: '0',
                                 fontSize: 11,
                                 converter: Entry.block.converters.returnStringKey,
@@ -217,10 +213,7 @@ Entry.NoriCoding.getBlocks = function() {
                 },
                 {
                     type: 'Dropdown',
-                    options: [
-                        ['끄기', '0'],
-                        ['켜기', '1'],
-                    ],
+                    options: [['끄기', '0'], ['켜기', '1']],
                     value: '0',
                     fontSize: 11,
                     bgColor: EntryStatic.colorSet.block.darken.HARDWARE,
@@ -247,15 +240,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var sq = Entry.hw.sendQueue;
-                var port = script.getNumberValue('PORT', script);
-                var value = script.getField('VALUE', script);
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                const value = script.getField('VALUE', script);
 
-                if (!sq['SET']) {
-                    sq['SET'] = {};
+                if (!sq.SET) {
+                    sq.SET = {};
                 }
-                sq['SET'][port] = {
+                sq.SET[port] = {
                     type: Entry.NoriCoding.sensorTypes.BUZZER,
                     data: value,
                     time: new Date().getTime(),
@@ -309,15 +302,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingGet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
 
-                var HWPORT = Entry.hw.portData.PORT;
-                if (!Entry.hw.sendQueue['GET']) {
-                    Entry.hw.sendQueue['GET'] = {};
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
                 }
-                Entry.hw.sendQueue['GET'][Entry.NoriCoding.sensorTypes.VOLUME] = {
-                    port: port,
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.VOLUME] = {
+                    port,
                     time: new Date().getTime(),
                 };
                 return HWPORT ? HWPORT[port] || 0 : 0;
@@ -365,15 +358,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingGet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
 
-                var HWPORT = Entry.hw.portData.PORT;
-                if (!Entry.hw.sendQueue['GET']) {
-                    Entry.hw.sendQueue['GET'] = {};
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
                 }
-                Entry.hw.sendQueue['GET'][Entry.NoriCoding.sensorTypes.SOUND] = {
-                    port: port,
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.SOUND] = {
+                    port,
                     time: new Date().getTime(),
                 };
                 return HWPORT ? HWPORT[port] || 0 : 0;
@@ -421,15 +414,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingGet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
 
-                var HWPORT = Entry.hw.portData.PORT;
-                if (!Entry.hw.sendQueue['GET']) {
-                    Entry.hw.sendQueue['GET'] = {};
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
                 }
-                Entry.hw.sendQueue['GET'][Entry.NoriCoding.sensorTypes.BUTTON] = {
-                    port: port,
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.BUTTON] = {
+                    port,
                     time: new Date().getTime(),
                 };
                 return HWPORT ? HWPORT[port] || 0 : 0;
@@ -477,15 +470,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingGet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
 
-                var HWPORT = Entry.hw.portData.PORT;
-                if (!Entry.hw.sendQueue['GET']) {
-                    Entry.hw.sendQueue['GET'] = {};
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
                 }
-                Entry.hw.sendQueue['GET'][Entry.NoriCoding.sensorTypes.AMBIENT] = {
-                    port: port,
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.AMBIENT] = {
+                    port,
                     time: new Date().getTime(),
                 };
                 return HWPORT ? HWPORT[port] || 0 : 0;
@@ -533,15 +526,15 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingGet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
 
-                var HWPORT = Entry.hw.portData.PORT;
-                if (!Entry.hw.sendQueue['GET']) {
-                    Entry.hw.sendQueue['GET'] = {};
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
                 }
-                Entry.hw.sendQueue['GET'][Entry.NoriCoding.sensorTypes.IRRANGE] = {
-                    port: port,
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.IRRANGE] = {
+                    port,
                     time: new Date().getTime(),
                 };
                 return HWPORT ? HWPORT[port] || 0 : 0;
@@ -551,6 +544,62 @@ Entry.NoriCoding.getBlocks = function() {
                 py: [
                     {
                         syntax: 'Nori.getIRRange(%1)',
+                        blockType: 'param',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_get_ultrasonic: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            fontColor: '#fff',
+            skeleton: 'basic_string_field',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                ],
+                type: 'nori_get_ultrasonic',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+            },
+            class: 'NoriCodingGet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
+
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
+                }
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.ULTRASONIC] = {
+                    port,
+                    time: new Date().getTime(),
+                };
+                return HWPORT ? HWPORT[port] || 0 : 0;
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.getUltrasonicRange(%1)',
                         blockType: 'param',
                         textParams: [
                             {
@@ -605,17 +654,17 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var sq = Entry.hw.sendQueue;
-                var port = script.getNumberValue('PORT', script);
-                var value = script.getNumberValue('VALUE', script);
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                let value = script.getNumberValue('VALUE', script);
                 value = Math.min(180, value);
                 value = Math.max(0, value);
 
-                if (!sq['SET']) {
-                    sq['SET'] = {};
+                if (!sq.SET) {
+                    sq.SET = {};
                 }
-                sq['SET'][port] = {
+                sq.SET[port] = {
                     type: Entry.NoriCoding.sensorTypes.SERVO,
                     data: value,
                     time: new Date().getTime(),
@@ -684,19 +733,19 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var sq = Entry.hw.sendQueue;
-                var port = script.getNumberValue('PORT', script);
-                var value = script.getNumberValue('VALUE', script);
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                let value = script.getNumberValue('VALUE', script);
                 value = value % 10000;
 
-                if (!sq['SET']) {
-                    sq['SET'] = {};
+                if (!sq.SET) {
+                    sq.SET = {};
                 }
-                sq['SET'][port] = {
+                sq.SET[port] = {
                     type: Entry.NoriCoding.sensorTypes.SEGMENT,
                     data: {
-                        value: value,
+                        value,
                         colon: 0,
                     },
                     time: new Date().getTime(),
@@ -775,23 +824,23 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var sq = Entry.hw.sendQueue;
-                var port = script.getNumberValue('PORT', script);
-                var hour = script.getNumberValue('HOUR', script);
-                var minute = script.getNumberValue('MINUTE', script);
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                let hour = script.getNumberValue('HOUR', script);
+                let minute = script.getNumberValue('MINUTE', script);
                 hour = Math.min(Math.max(0, hour), 99);
                 minute = Math.min(Math.max(0, minute), 99);
 
-                var value = hour * 100 + minute;
+                const value = hour * 100 + minute;
 
-                if (!sq['SET']) {
-                    sq['SET'] = {};
+                if (!sq.SET) {
+                    sq.SET = {};
                 }
-                sq['SET'][port] = {
+                sq.SET[port] = {
                     type: Entry.NoriCoding.sensorTypes.SEGMENT,
                     data: {
-                        value: value,
+                        value,
                         colon: 1,
                     },
                     time: new Date().getTime(),
@@ -853,14 +902,14 @@ Entry.NoriCoding.getBlocks = function() {
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
-            func: function(sprite, script) {
-                var sq = Entry.hw.sendQueue;
-                var port = script.getNumberValue('PORT', script);
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
 
-                if (!sq['SET']) {
-                    sq['SET'] = {};
+                if (!sq.SET) {
+                    sq.SET = {};
                 }
-                sq['SET'][port] = {
+                sq.SET[port] = {
                     type: Entry.NoriCoding.sensorTypes.SEGMENT,
                     data: null,
                     time: new Date().getTime(),
@@ -874,6 +923,84 @@ Entry.NoriCoding.getBlocks = function() {
                     {
                         syntax: 'Nori.displayClear(%1)',
                         textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_lcd_print: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                },
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    {
+                        type: 'string',
+                        params: [''],
+                    },
+                    null,
+                ],
+                type: 'nori_display_number',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+                VALUE: 1,
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                let value = script.getStringValue('PORT', script);
+                value = value.substring(0, 16);
+
+                if (!sq.SET) {
+                    sq.SET = {};
+                }
+
+                sq.SET[port] = {
+                    type: Entry.NoriCoding.sensorTypes.LCD,
+                    data: value,
+                    time: new Date().getTime(),
+                };
+
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.printStringToLCD(%1, %2)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
                             {
                                 type: 'Block',
                                 accept: 'string',
