@@ -41,7 +41,7 @@ Entry.NoriCoding = {
         ULTRASONIC: 11,
         IRRANGE: 12,
         TOUCH: 13,
-        LCD: 14,
+        TEXTLCD: 14,
         SEGMENT: 15,
     },
     toneTable: {
@@ -76,6 +76,11 @@ Entry.NoriCoding = {
     highList: ['high', '1', 'on'],
     lowList: ['low', '0', 'off'],
     BlockState: {},
+    sleep(num) {
+        const stop = new Date().getTime() + num;
+        while (new Date().getTime() <= stop) {
+        }
+    },
 };
 
 /*
@@ -112,7 +117,7 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_display_number: '%1번 포트 숫자 표시 모듈에 %2 표시 %3',
                 nori_display_time: '%1번 포트 숫자 표시 모듈에 %2시 %3분 표시 %4',
                 nori_display_clear: '%1번 포트 숫자 표시 모듈 지우기 %2',
-                nori_lcd_print: '%1번 포트 LCD 모듈에 %2 출력하기 %3',
+                nori_lcd_print: '%1번 포트 LCD 모듈 %2번줄에 %3 출력하기 %4',
             },
         },
         en: {
@@ -128,7 +133,7 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_display_number: 'Display number on port %1 as %2 %3',
                 nori_display_time: 'Display time on port %1 as %2 %3 %4',
                 nori_display_clear: 'Clear display on port %1 %2',
-                nori_lcd_print: 'Print to LCD module on port %1 as %2 %3',
+                nori_lcd_print: 'Print to LCD module on port %1 line %2 as %3 %4',
             },
         },
     };
@@ -944,6 +949,14 @@ Entry.NoriCoding.getBlocks = function() {
                     defaultType: 'number',
                 },
                 {
+                    type: 'Dropdown',
+                    options: [['1', '0'], ['2', '1']],
+                    value: '0',
+                    fontSize: 11,
+                    bgColor: EntryStatic.colorSet.block.darken.HARDWARE,
+                    arrowColor: EntryStatic.colorSet.arrow.default.HARDWARE,
+                },
+                {
                     type: 'Block',
                     accept: 'string',
                 },
@@ -959,36 +972,43 @@ Entry.NoriCoding.getBlocks = function() {
                     {
                         type: 'nori_get_port_number',
                     },
+                    null,
                     {
-                        type: 'string',
-                        params: [''],
+                        type: 'text',
+                        params: ['Hello World!'],
                     },
                     null,
                 ],
-                type: 'nori_display_number',
+                type: 'nori_lcd_print',
             },
             paramsKeyMap: {
                 PORT: 0,
-                VALUE: 1,
+                LINE: 1,
+                TEXT: 2,
             },
             class: 'NoriCodingSet',
             isNotFor: ['NoriCoding'],
             func(sprite, script) {
                 const sq = Entry.hw.sendQueue;
                 const port = script.getNumberValue('PORT', script);
-                let value = script.getStringValue('PORT', script);
-                value = value.substring(0, 16);
+                const dispLine = script.getField('LINE', script);
+                let textValue = script.getStringValue('TEXT', script);
+                textValue = textValue.substring(0, 16);
 
                 if (!sq.SET) {
                     sq.SET = {};
                 }
 
                 sq.SET[port] = {
-                    type: Entry.NoriCoding.sensorTypes.LCD,
-                    data: value,
+                    type: Entry.NoriCoding.sensorTypes.TEXTLCD,
+                    data: {
+                        line: dispLine,
+                        value: textValue,
+                    },
                     time: new Date().getTime(),
                 };
 
+                Entry.hw.update();
                 return script.callReturn();
             },
             syntax: {
