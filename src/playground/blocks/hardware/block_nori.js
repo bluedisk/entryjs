@@ -24,6 +24,10 @@ Entry.NoriCoding = {
         }
         Entry.hw.update();
     },
+    sleep(delay) {
+        const waitTill = new Date(new Date().getTime() + delay);
+        while(waitTill > new Date()){}
+    },
     sensorTypes: {
         ALIVE: 0,
 
@@ -75,12 +79,7 @@ Entry.NoriCoding = {
     },
     highList: ['high', '1', 'on'],
     lowList: ['low', '0', 'off'],
-    BlockState: {},
-    sleep(num) {
-        const stop = new Date().getTime() + num;
-        while (new Date().getTime() <= stop) {
-        }
-    },
+    BlockState: {}
 };
 
 /*
@@ -118,6 +117,10 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_display_time: '%1번 포트 숫자 표시 모듈에 %2시 %3분 표시 %4',
                 nori_display_clear: '%1번 포트 숫자 표시 모듈 지우기 %2',
                 nori_lcd_print: '%1번 포트 LCD 모듈 %2번줄에 %3 출력하기 %4',
+                nori_get_temperatue: "%1번 포트 온습도센서 온도값",
+                nori_get_humidity: "%1번 포트 온습도센서 습도값",
+                nori_set_neocolor: "%1번 포트 %2번째 네오픽셀 RGB(%3 %4 %5)로 세팅하기 %6",
+                nori_set_neoclear: "%1번 포트 네오픽셀 모두 끄기 %2",
             },
         },
         en: {
@@ -134,6 +137,10 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_display_time: 'Display time on port %1 as %2 %3 %4',
                 nori_display_clear: 'Clear display on port %1 %2',
                 nori_lcd_print: 'Print to LCD module on port %1 line %2 as %3 %4',
+                nori_get_temperatue: "Temperature of DHT11 on port %1",
+                nori_get_humidity: "Humidity of DHT11 on port %1",
+                nori_set_neocolor: "Set NeoPixel on port %1 pixel %2 to RGB(%3 %4 %5)로 세팅하기 %6",
+                nori_set_neoclear: "Turn NeoPixel Off on port %1 %2",
             },
         },
     };
@@ -145,13 +152,17 @@ Entry.NoriCoding.blockMenuBlocks = [
     'nori_display_number',
     'nori_display_time',
     'nori_display_clear',
+    'nori_lcd_print',
+    'nori_set_neocolor',
+    'nori_set_neoclear',
     'nori_get_volume',
     'nori_get_sound',
     'nori_get_button',
     'nori_get_ambient',
     'nori_get_irrange',
     'nori_get_ultrasonic',
-    'nori_lcd_print',
+    'nori_get_temperatue',
+    'nori_get_humidity',
 ];
 
 //region arduinoExt 아두이노 확장모드
@@ -755,6 +766,9 @@ Entry.NoriCoding.getBlocks = function() {
                     },
                     time: new Date().getTime(),
                 };
+                 
+                Entry.hw.update();
+                Entry.NoriCoding.sleep(10);
 
                 return script.callReturn();
             },
@@ -1009,6 +1023,7 @@ Entry.NoriCoding.getBlocks = function() {
                 };
 
                 Entry.hw.update();
+                Entry.NoriCoding.sleep(10);
                 return script.callReturn();
             },
             syntax: {
@@ -1030,8 +1045,325 @@ Entry.NoriCoding.getBlocks = function() {
                 ],
             },
         },
+        nori_get_temperatue: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            fontColor: '#fff',
+            skeleton: 'basic_string_field',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    null,
+                ],
+                type: 'nori_get_temperatue',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+            },
+            class: 'NoriCodingGet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
+
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
+                }
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.TEMPER] = {
+                    port,
+                    time: new Date().getTime(),
+                };
+                return HWPORT ? HWPORT[port][0] || 0 : 0;
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.getTemerature(%1)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_get_humidity: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            fontColor: '#fff',
+            skeleton: 'basic_string_field',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                ],
+                type: 'nori_get_humidity',
+            },
+            paramsKeyMap: {
+                PORT: 0
+            },
+            class: 'NoriCodingGet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
+
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
+                }
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.TEMPER] = {
+                    port,
+                    time: new Date().getTime(),
+                };
+                return HWPORT ? HWPORT[port][1] || 0 : 0;
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.getHumidity(%1)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_set_neocolor: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                }, 
+                {
+                    type: 'Dropdown',
+                    options: [
+                        ['1', '0'], 
+                        ['2', '1'], 
+                        ['3', '2'], 
+                        ['4', '3'], 
+                        ['5', '4'], 
+                        ['6', '5'], 
+                        ['7', '6'], 
+                        ['8', '7'], 
+                        ['9', '8'], 
+                        ['10', '9'],
+                    ],
+                    value: '0',
+                    fontSize: 11,
+                    bgColor: EntryStatic.colorSet.block.darken.HARDWARE,
+                    arrowColor: EntryStatic.colorSet.arrow.default.HARDWARE,
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    null,
+                    {
+                        type: 'number',
+                        params: ['0'],
+                    },
+                    {
+                        type: 'number',
+                        params: ['0'],
+                    },
+                    {
+                        type: 'number',
+                        params: ['0'],
+                    },
+                    null,
+                ],
+                type: 'nori_set_neocolor',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+                INDEX: 1,
+                R: 2,
+                G: 3,
+                B: 4
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+                const index = script.getField('INDEX',script);
+                const r =  script.getNumberValue('R', script);
+                const g =  script.getNumberValue('G', script);
+                const b =  script.getNumberValue('B', script);
+
+                console.log(index);
+
+                if (!sq.SET) {
+                    sq.SET = {};
+                }
+                sq.SET[port] = {
+                    type: Entry.NoriCoding.sensorTypes.NEOPIXEL,
+                    data: {
+                        index: index,
+                        r: r,
+                        g: g,
+                        b: b
+                    },
+                    time: new Date().getTime(),
+                };
+                Entry.hw.update();
+                Entry.NoriCoding.sleep(10);
+
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.setNeoPixel(%1, %2, %3, %4 ,%5)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_set_neoclear: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            skeleton: 'basic',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                }, 
+                {
+                    type: 'Indicator',
+                    img: 'block_icon/hardware_icon.svg',
+                    size: 12,
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                    null,
+                ],
+                type: 'nori_set_neoclear',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+            },
+            class: 'NoriCodingSet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const sq = Entry.hw.sendQueue;
+                const port = script.getNumberValue('PORT', script);
+
+                if (!sq.SET) {
+                    sq.SET = {};
+                }
+                sq.SET[port] = {
+                    type: Entry.NoriCoding.sensorTypes.NEOPIXEL,
+                    time: new Date().getTime(),
+                };
+
+                Entry.hw.update();
+                Entry.NoriCoding.sleep(10);
+                return script.callReturn();
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.clearNeoPixel(%1)',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+
     };
 };
-//endregion arduinoExt 아두이노 확장모드
+//endregion NoriCoding 노리코딩 
 
 module.exports = Entry.NoriCoding;
