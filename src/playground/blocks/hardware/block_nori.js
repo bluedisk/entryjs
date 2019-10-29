@@ -482,7 +482,7 @@ Entry.NoriCoding.getBlocks = function() {
                         type: 'nori_get_port_number',
                     },
                 ],
-                type: 'nori_get_button',
+                type: 'nori_get_touch',
             },
             paramsKeyMap: {
                 PORT: 0,
