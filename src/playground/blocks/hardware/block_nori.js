@@ -110,6 +110,7 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_get_volume: '%1번 포트 볼륨',
                 nori_get_sound: '%1번 포트 소리 감지 됨',
                 nori_get_button: '%1번 포트 버튼 눌림',
+                nori_get_touch: '%1번 포트 터치 센서 닿음',
                 nori_get_ambient: '%1번 포트 밝기 센서 값',
                 nori_get_irrange: '%1번 포트 적외선 거리 센서 값',
                 nori_get_ultrasonic: '%1번 포트 초음파 거리 센서 값',
@@ -130,6 +131,7 @@ Entry.NoriCoding.setLanguage = function() {
                 nori_get_volume: 'Volume level on port %1',
                 nori_get_sound: 'Sound is detected on port %1',
                 nori_get_button: 'button status on port %1',
+                nori_get_touch: 'Touch sensor on port %1 is touched',
                 nori_get_ambient: 'Ambient value on port %1',
                 nori_get_irrange: 'IR range sensor value on port %1',
                 nori_get_ultrasonic: 'Ultrasonic range sensor value on port %1',
@@ -158,6 +160,7 @@ Entry.NoriCoding.blockMenuBlocks = [
     'nori_get_volume',
     'nori_get_sound',
     'nori_get_button',
+    'nori_get_touch',
     'nori_get_ambient',
     'nori_get_irrange',
     'nori_get_ultrasonic',
@@ -448,6 +451,62 @@ Entry.NoriCoding.getBlocks = function() {
                 py: [
                     {
                         syntax: 'Nori.isButtonDown(%1)',
+                        blockType: 'param',
+                        textParams: [
+                            {
+                                type: 'Block',
+                                accept: 'string',
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+        nori_get_touch: {
+            color: EntryStatic.colorSet.block.default.HARDWARE,
+            outerLine: EntryStatic.colorSet.block.darken.HARDWARE,
+            fontColor: '#fff',
+            skeleton: 'basic_boolean_field',
+            statements: [],
+            params: [
+                {
+                    type: 'Block',
+                    accept: 'string',
+                    defaultType: 'number',
+                },
+            ],
+            events: {},
+            def: {
+                params: [
+                    {
+                        type: 'nori_get_port_number',
+                    },
+                ],
+                type: 'nori_get_button',
+            },
+            paramsKeyMap: {
+                PORT: 0,
+            },
+            class: 'NoriCodingGet',
+            isNotFor: ['NoriCoding'],
+            func(sprite, script) {
+                const port = script.getNumberValue('PORT', script);
+
+                const HWPORT = Entry.hw.portData.PORT;
+                if (!Entry.hw.sendQueue.GET) {
+                    Entry.hw.sendQueue.GET = {};
+                }
+                Entry.hw.sendQueue.GET[Entry.NoriCoding.sensorTypes.BUTTON] = {
+                    port,
+                    time: new Date().getTime(),
+                };
+                return HWPORT ? HWPORT[port] || 0 : 0;
+            },
+            syntax: {
+                js: [],
+                py: [
+                    {
+                        syntax: 'Nori.isTouched(%1)',
                         blockType: 'param',
                         textParams: [
                             {
@@ -766,7 +825,7 @@ Entry.NoriCoding.getBlocks = function() {
                     },
                     time: new Date().getTime(),
                 };
-                 
+
                 Entry.hw.update();
                 Entry.NoriCoding.sleep(10);
 
@@ -1166,19 +1225,19 @@ Entry.NoriCoding.getBlocks = function() {
                     type: 'Block',
                     accept: 'string',
                     defaultType: 'number',
-                }, 
+                },
                 {
                     type: 'Dropdown',
                     options: [
-                        ['1', '0'], 
-                        ['2', '1'], 
-                        ['3', '2'], 
-                        ['4', '3'], 
-                        ['5', '4'], 
-                        ['6', '5'], 
-                        ['7', '6'], 
-                        ['8', '7'], 
-                        ['9', '8'], 
+                        ['1', '0'],
+                        ['2', '1'],
+                        ['3', '2'],
+                        ['4', '3'],
+                        ['5', '4'],
+                        ['6', '5'],
+                        ['7', '6'],
+                        ['8', '7'],
+                        ['9', '8'],
                         ['10', '9'],
                     ],
                     value: '0',
@@ -1308,7 +1367,7 @@ Entry.NoriCoding.getBlocks = function() {
                     type: 'Block',
                     accept: 'string',
                     defaultType: 'number',
-                }, 
+                },
                 {
                     type: 'Indicator',
                     img: 'block_icon/hardware_icon.svg',
@@ -1364,6 +1423,6 @@ Entry.NoriCoding.getBlocks = function() {
 
     };
 };
-//endregion NoriCoding 노리코딩 
+//endregion NoriCoding 노리코딩
 
 module.exports = Entry.NoriCoding;
